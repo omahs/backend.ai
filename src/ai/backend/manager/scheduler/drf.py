@@ -16,9 +16,9 @@ from ai.backend.common.types import (
     SessionId,
 )
 
-from ..models import AgentRow, SessionRow
+from ..models import AgentRow, KernelRow, SessionRow
 from ..models.scaling_group import ScalingGroupOpts
-from .types import AbstractScheduler, KernelInfo
+from .types import AbstractScheduler
 
 log = BraceStyleAdapter(logging.getLogger("ai.backend.manager.scheduler"))
 
@@ -83,7 +83,7 @@ class DRFScheduler(AbstractScheduler):
     async def _assign_agent(
         self,
         possible_agents: Sequence[AgentRow],
-        pending_session_or_kernel: SessionRow | KernelInfo,
+        pending_session_or_kernel: SessionRow | KernelRow,
         roundrobin_context: Optional[RoundRobinContext] = None,
     ) -> Optional[AgentId]:
         # If some predicate checks for a picked session fail,
@@ -132,7 +132,7 @@ class DRFScheduler(AbstractScheduler):
     async def assign_agent_for_kernel(
         self,
         possible_agents: Sequence[AgentRow],
-        pending_kernel: KernelInfo,
+        pending_kernel: KernelRow,
     ) -> Optional[AgentId]:
         return await self._assign_agent(
             possible_agents,
