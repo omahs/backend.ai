@@ -13,7 +13,7 @@ from ai.backend.common.docker import ImageRef
 from ai.backend.common.etcd import quote as etcd_quote
 from ai.backend.common.types import SessionTypes
 
-from ..defs import DEFAULT_IMAGE_ARCH, DEFAULT_ROLE
+from ..defs import DEFAULT_IMAGE_ARCH, DEFAULT_ROLE, DEFAULT_SHARED_MEMORY_SIZE
 from ..models import association_groups_users as agus
 from ..models import domains, groups, query_allowed_sgroups
 from ..types import UserScope
@@ -296,7 +296,7 @@ async def get_import_image_form(request: web.Request) -> web.Response:
             t.Key("baseDistro"): t.Enum("ubuntu", "centos"),
             t.Key("minCPU", default=1): t.Int[1:],
             t.Key("minMemory", default="64m"): tx.BinarySize,
-            t.Key("preferredSharedMemory", default="64m"): tx.BinarySize,
+            t.Key("preferredSharedMemory", default=DEFAULT_SHARED_MEMORY_SIZE): tx.BinarySize,
             t.Key("supportedAccelerators"): t.List(t.String),
             t.Key("runtimeType"): t.Enum("python"),
             t.Key("runtimePath"): tx.Path(type="file", allow_nonexisting=True, resolve=False),
