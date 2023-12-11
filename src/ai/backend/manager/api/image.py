@@ -266,7 +266,9 @@ async def get_import_image_form(request: web.Request) -> web.Response:
                         "type": "choice",
                         "choices": accessible_scaling_groups,
                         "label": "Scaling group to build image",
-                        "help": "The scaling group where the import task will take resources from.",
+                        "help": (
+                            "The scaling group where the import task will take resources from."
+                        ),
                     },
                 ],
             },
