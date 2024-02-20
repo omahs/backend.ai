@@ -1168,6 +1168,14 @@ def set_if_set(
             target[target_key or name] = v
 
 
+async def load_table(engine: SAEngine, table_name: str) -> sa.Table:
+    async with engine.begin() as conn:
+        return await conn.run_sync(
+            lambda conn, table_name: sa.Table(table_name, sa.MetaData(), autoload_with=conn),
+            table_name,
+        )
+
+
 async def populate_fixture(
     engine: SAEngine,
     fixture_data: Mapping[str, str | Sequence[dict[str, Any]]],
@@ -1178,7 +1186,13 @@ async def populate_fixture(
             # skip reserved names like "__mode"
             continue
         assert not isinstance(rows, str)
-        table: sa.Table = getattr(models, table_name)
+
+        # TODO: Remove this try statement after all the table upgrade is done
+        try:
+            table: sa.Table = getattr(models, table_name)
+        except AttributeError:
+            table = await load_table(engine, table_name)
+
         assert isinstance(table, sa.Table)
         if not rows:
             return
