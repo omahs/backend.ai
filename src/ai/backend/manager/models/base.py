@@ -1186,7 +1186,7 @@ async def populate_fixture(
             continue
         assert not isinstance(rows, str)
 
-        table: sa.Table = metadata.tables.get("sgroups_for_groups")
+        table: sa.Table = metadata.tables.get(table_name)
 
         assert isinstance(table, sa.Table)
         if not rows:
