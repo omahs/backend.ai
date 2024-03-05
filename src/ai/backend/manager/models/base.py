@@ -65,9 +65,7 @@ from ai.backend.common.types import (
     VFolderHostPermission,
     VFolderHostPermissionMap,
 )
-from ai.backend.manager.models.utils import execute_with_retry
 
-from .. import models
 from ..api.exceptions import GenericForbidden, InvalidAPIParameters
 from .gql_relay import (
     AsyncListConnectionField,
@@ -76,6 +74,7 @@ from .gql_relay import (
 )
 from .minilang.ordering import OrderDirection, OrderingItem, QueryOrderParser
 from .minilang.queryfilter import QueryFilterParser, WhereClauseType
+from .utils import execute_with_retry
 
 if TYPE_CHECKING:
     from sqlalchemy.engine.interfaces import Dialect
@@ -1187,11 +1186,7 @@ async def populate_fixture(
             continue
         assert not isinstance(rows, str)
 
-        # TODO: Remove this try statement after all the table upgrade is done
-        try:
-            table: sa.Table = getattr(models, table_name)
-        except AttributeError:
-            table = await load_table(engine, table_name)
+        table: sa.Table = metadata.tables.get("sgroups_for_groups")
 
         assert isinstance(table, sa.Table)
         if not rows:
