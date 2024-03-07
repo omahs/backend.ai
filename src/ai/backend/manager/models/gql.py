@@ -2145,7 +2145,6 @@ class Queries(graphene.ObjectType):
 class GQLMutationPrivilegeCheckMiddleware:
     def resolve(self, next, root, info: graphene.ResolveInfo, **args) -> Any:
         graph_ctx: GraphQueryContext = info.context
-
         if info.operation.operation == OperationType.MUTATION and len(info.path) == 1:
             mutation_cls = getattr(Mutations, info.field_name).type
             # default is allow nobody.
