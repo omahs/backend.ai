@@ -37,7 +37,7 @@ class HarborRegistry_v1(BaseContainerRegistry):
                     ContainerRegistryRow.registry_name == self.registry_info.registry_name
                 )
             )
-            registry_projects = result.scalars().all()
+            registry_projects = cast(list[str | None], result.scalars().all())
 
         rqst_args = {}
         if self.credentials:
@@ -147,7 +147,7 @@ class HarborRegistry_v2(BaseContainerRegistry):
                     ContainerRegistryRow.registry_name == self.registry_info.registry_name
                 )
             )
-            registry_projects = result.scalars().all()
+            registry_projects = cast(list[str | None], result.scalars().all())
 
         rqst_args = {}
         if self.credentials:
@@ -157,6 +157,8 @@ class HarborRegistry_v2(BaseContainerRegistry):
             )
         repo_list_url: Optional[yarl.URL]
         for project_name in registry_projects:
+            assert project_name is not None
+
             repo_list_url = (api_url / "projects" / project_name / "repositories").with_query(
                 {"page_size": "30"},
             )
