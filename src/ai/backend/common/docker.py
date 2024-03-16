@@ -289,13 +289,13 @@ def is_dockerhub_library_registry(
     return False
 
 
-def is_in_known_library_list(
+def is_in_known_registry_list(
     registry_name: str, known_registries: Optional[Mapping[str, Mapping[str, Any]] | Sequence[str]]
 ) -> bool:
     return isinstance(known_registries, list) and registry_name in known_registries
 
 
-def is_in_known_library_dict(
+def is_in_known_registry_dict(
     registry_name: str,
     project: str,
     known_registries: Optional[Mapping[str, Mapping[str, Any]] | Sequence[str]],
@@ -325,8 +325,8 @@ def is_known_registry(
     return any([
         is_default_registry(registry_name, project),
         is_dockerhub_library_registry(project, known_registries),
-        is_in_known_library_list(registry_name, known_registries),
-        is_in_known_library_dict(registry_name, project, known_registries),
+        is_in_known_registry_list(registry_name, known_registries),
+        is_in_known_registry_dict(registry_name, project, known_registries),
         is_ip_address_format(registry_name),
     ])
 
