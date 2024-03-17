@@ -491,6 +491,8 @@ class Image(graphene.ObjectType):
     supported_accelerators = graphene.List(graphene.String)
     installed = graphene.Boolean()
     installed_agents = graphene.List(graphene.String)
+    registry_id = graphene.UUID()
+
     # legacy field
     hash = graphene.String()
 
@@ -526,6 +528,7 @@ class Image(graphene.ObjectType):
             supported_accelerators=(row.accelerators or "").split(","),
             installed=len(installed_agents) > 0,
             installed_agents=installed_agents if not hide_agents else None,
+            registry_id=row.registry_id,
             # legacy
             hash=row.config_digest,
         )

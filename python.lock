@@ -4214,19 +4214,19 @@
           "artifacts": [
             {
               "algorithm": "sha256",
-              "hash": "ec5c8db0af0207aabbea93f9c25b859103e1ce4303f0dc70b0c7f4f927417310",
-              "url": "https://files.pythonhosted.org/packages/62/b0/9493d0429c293eb2d8a1318d739fd18608dfcdc9e69257c4e1161248ee34/types_setuptools-69.2.0.20240316-py3-none-any.whl"
+              "hash": "cf91ff7c87ab7bf0625c3f0d4d90427c9da68561f3b0feab77977aaf0bbf7531",
+              "url": "https://files.pythonhosted.org/packages/1f/22/904934a3344fa5f332ecab887003f3f033c1272432a4af877007b75b0bd3/types_setuptools-69.2.0.20240317-py3-none-any.whl"
             },
             {
               "algorithm": "sha256",
-              "hash": "58c3172aef76a368d6434bc406c08adec91779770b6bdda59ae56af43f29a61e",
-              "url": "https://files.pythonhosted.org/packages/37/f1/72d90c354f15ba5d465293e59aaf80cc11fe070c9609ace09be3b1a97a87/types-setuptools-69.2.0.20240316.tar.gz"
+              "hash": "b607c4c48842ef3ee49dc0c7fe9c1bad75700b071e1018bb4d7e3ac492d47048",
+              "url": "https://files.pythonhosted.org/packages/2d/06/0de7b539346aaa8758b3c80375c4841dc2764ef92c5e743f1ebe9789da54/types-setuptools-69.2.0.20240317.tar.gz"
             }
           ],
           "project_name": "types-setuptools",
           "requires_dists": [],
           "requires_python": ">=3.8",
-          "version": "69.2.0.20240316"
+          "version": "69.2.0.20240317"
         },
         {
           "artifacts": [
