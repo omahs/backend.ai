@@ -4,6 +4,7 @@ import asyncio
 import functools
 import grp
 import importlib
+import importlib.resources
 import logging
 import os
 import pwd
@@ -62,7 +63,12 @@ from .api.exceptions import (
     MethodNotAllowed,
     URLNotFound,
 )
-from .api.types import AppCreator, CleanupContext, WebMiddleware, WebRequestHandler
+from .api.types import (
+    AppCreator,
+    CleanupContext,
+    WebMiddleware,
+    WebRequestHandler,
+)
 from .config import LocalConfig, SharedConfig, volume_config_iv
 from .config import load as load_config
 from .exceptions import InvalidArgument
@@ -106,6 +112,14 @@ VALID_VERSIONS: Final = frozenset([
     # added user & project resource policies
     # deprecated per-vfolder quota configs (BREAKING)
     "v7.20230615",
+    # added /vfolders API set to replace name-based refs to ID-based refs to work with vfolders
+    # set pending deprecation for the legacy /folders API set
+    # added vfolder trash bin APIs
+    # changed the image registry management API to allow per-project registry configs (BREAKING)
+    # TODO: added an initial version of RBAC for projects and vfolders
+    # TODO: replaced keypair-based resource policies to user-based resource policies
+    # TODO: began SSO support using per-external-service keypairs (e.g., for FastTrack)
+    "v8.20240315",
 ])
 LATEST_REV_DATES: Final = {
     1: "20160915",
@@ -115,8 +129,9 @@ LATEST_REV_DATES: Final = {
     5: "20191215",
     6: "20230315",
     7: "20230615",
+    8: "20240315",
 }
-LATEST_API_VERSION: Final = "v7.20230615"
+LATEST_API_VERSION: Final = "v8.20240315"
 
 log = BraceStyleAdapter(logging.getLogger(__spec__.name))  # type: ignore[name-defined]
 
@@ -150,6 +165,7 @@ global_subapp_pkgs: Final[list[str]] = [
     ".ratelimit",
     ".vfolder",
     ".admin",
+    ".spec",
     ".service",
     ".session",
     ".stream",
@@ -294,6 +310,7 @@ async def webapp_plugin_ctx(root_app: web.Application) -> AsyncIterator[None]:
     root_ctx: RootContext = root_app["_root.context"]
     plugin_ctx = WebappPluginContext(root_ctx.shared_config.etcd, root_ctx.local_config)
     await plugin_ctx.init(
+        context=root_ctx,
         allowlist=root_ctx.local_config["manager"]["allowed-plugins"],
         blocklist=root_ctx.local_config["manager"]["disabled-plugins"],
     )
@@ -432,7 +449,7 @@ async def hook_plugin_ctx(root_ctx: RootContext) -> AsyncIterator[None]:
     ctx = HookPluginContext(root_ctx.shared_config.etcd, root_ctx.local_config)
     root_ctx.hook_plugin_ctx = ctx
     await ctx.init(
-        context=ctx,
+        context=root_ctx,
         allowlist=root_ctx.local_config["manager"]["allowed-plugins"],
         blocklist=root_ctx.local_config["manager"]["disabled-plugins"],
     )
@@ -679,6 +696,7 @@ def _init_subapp(
         # Allow subapp's access to the root app properties.
         # These are the public APIs exposed to plugins as well.
         subapp["_root.context"] = root_app["_root.context"]
+        subapp["_root_app"] = root_app
 
     # We must copy the public interface prior to all user-defined startup signal handlers.
     subapp.on_startup.insert(0, _set_root_ctx)
@@ -824,6 +842,10 @@ def build_root_app(
             log.info("Loading module: {0}", pkg_name[1:])
         subapp_mod = importlib.import_module(pkg_name, "ai.backend.manager.api")
         init_subapp(pkg_name, app, getattr(subapp_mod, "create_app"))
+
+    vendor_path = importlib.resources.files("ai.backend.manager.vendor")
+    assert isinstance(vendor_path, Path)
+    app.router.add_static("/static/vendor", path=vendor_path, name="static")
     return app
 
 
@@ -939,16 +961,21 @@ async def server_main_logwrapper(
 )
 @click.option(
     "--log-level",
-    type=click.Choice([*LogSeverity.__members__.keys()], case_sensitive=False),
-    default="INFO",
+    type=click.Choice([*LogSeverity], case_sensitive=False),
+    default=LogSeverity.INFO,
     help="Set the logging verbosity level",
 )
 @click.pass_context
-def main(ctx: click.Context, config_path: Path, log_level: str, debug: bool = False) -> None:
+def main(
+    ctx: click.Context,
+    config_path: Path,
+    log_level: LogSeverity,
+    debug: bool = False,
+) -> None:
     """
     Start the manager service as a foreground process.
     """
-    cfg = load_config(config_path, "DEBUG" if debug else log_level)
+    cfg = load_config(config_path, LogSeverity.DEBUG if debug else log_level)
 
     if ctx.invoked_subcommand is None:
         cfg["manager"]["pid-file"].write_text(str(os.getpid()))

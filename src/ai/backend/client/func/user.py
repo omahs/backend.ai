@@ -5,13 +5,14 @@ import textwrap
 import uuid
 from typing import Any, Iterable, Mapping, Sequence, Union
 
+from ...cli.types import Undefined, undefined
 from ..auth import AuthToken, AuthTokenTypes
 from ..output.fields import user_fields
 from ..output.types import FieldSpec, PaginatedResult
 from ..pagination import fetch_paginated_result
 from ..request import Request
 from ..session import api_session
-from ..types import Undefined, set_if_set, undefined
+from ..types import set_if_set
 from .base import BaseFunction, api_function, resolve_fields
 
 __all__ = (
@@ -57,7 +58,7 @@ _default_detail_fields = (
 )
 
 
-class UserRole(str, enum.Enum):
+class UserRole(enum.StrEnum):
     """
     The role (privilege level) of users.
     """
@@ -68,7 +69,7 @@ class UserRole(str, enum.Enum):
     MONITOR = "monitor"
 
 
-class UserStatus(enum.Enum):
+class UserStatus(enum.StrEnum):
     """
     The detailed status of users to represent the signup process and account lifecycles.
     """

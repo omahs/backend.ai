@@ -16,7 +16,6 @@ from typing import (
     Mapping,
     Optional,
     Sequence,
-    Union,
     cast,
 )
 from uuid import UUID
@@ -29,8 +28,9 @@ from tqdm import tqdm
 from ai.backend.client.output.fields import session_fields
 from ai.backend.client.output.types import FieldSpec, PaginatedResult
 from ai.backend.common.arch import DEFAULT_IMAGE_ARCH
-from ai.backend.common.types import SessionTypes
+from ai.backend.common.types import ClusterMode, SessionTypes
 
+from ...cli.types import Undefined, undefined
 from ..compat import current_loop
 from ..config import DEFAULT_CHUNK_SIZE
 from ..exceptions import BackendClientError
@@ -43,7 +43,6 @@ from ..request import (
     WebSocketResponse,
 )
 from ..session import api_session
-from ..types import Undefined, undefined
 from ..utils import ProgressReportingReader
 from ..versioning import get_id_or_name, get_naming
 from .base import BaseFunction, api_function
@@ -182,7 +181,7 @@ class ComputeSession(BaseFunction):
         resources: Mapping[str, str | int] = None,
         resource_opts: Mapping[str, str | int] = None,
         cluster_size: int = 1,
-        cluster_mode: Literal["single-node", "multi-node"] = "single-node",
+        cluster_mode: ClusterMode = ClusterMode.SINGLE_NODE,
         domain_name: str = None,
         group_name: str = None,
         bootstrap_script: str = None,
@@ -348,21 +347,21 @@ class ComputeSession(BaseFunction):
         *,
         name: str | Undefined = undefined,
         type_: str | Undefined = undefined,
-        starts_at: str = None,
+        starts_at: str | None = None,  # not included in templates
         enqueue_only: bool | Undefined = undefined,
         max_wait: int | Undefined = undefined,
-        dependencies: Sequence[str] = None,  # cannot be stored in templates
+        dependencies: Sequence[str] | None = None,  # cannot be stored in templates
         callback_url: str | Undefined = undefined,
         no_reuse: bool | Undefined = undefined,
         image: str | Undefined = undefined,
-        mounts: Union[List[str], Undefined] = undefined,
-        mount_map: Union[Mapping[str, str], Undefined] = undefined,
-        envs: Union[Mapping[str, str], Undefined] = undefined,
+        mounts: List[str] | Undefined = undefined,
+        mount_map: Mapping[str, str] | Undefined = undefined,
+        envs: Mapping[str, str] | Undefined = undefined,
         startup_command: str | Undefined = undefined,
-        resources: Union[Mapping[str, str | int], Undefined] = undefined,
-        resource_opts: Union[Mapping[str, str | int], Undefined] = undefined,
+        resources: Mapping[str, str | int] | Undefined = undefined,
+        resource_opts: Mapping[str, str | int] | Undefined = undefined,
         cluster_size: int | Undefined = undefined,
-        cluster_mode: Union[Literal["single-node", "multi-node"], Undefined] = undefined,
+        cluster_mode: ClusterMode | Undefined = undefined,
         domain_name: str | Undefined = undefined,
         group_name: str | Undefined = undefined,
         bootstrap_script: str | Undefined = undefined,
@@ -997,6 +996,39 @@ class ComputeSession(BaseFunction):
         async with rqst.fetch() as resp:
             return await resp.json()
 
+    @api_function
+    async def start_service(
+        self,
+        app: str,
+        *,
+        port: int | Undefined = undefined,
+        envs: dict[str, Any] | Undefined = undefined,
+        arguments: dict[str, Any] | Undefined = undefined,
+        login_session_token: str | Undefined = undefined,
+    ) -> Mapping[str, Any]:
+        """
+        Starts application from Backend.AI session and returns access credentials
+        to access AppProxy endpoint.
+        """
+        body: dict[str, Any] = {"app": app}
+        if port is not undefined:
+            body["port"] = port
+        if envs is not undefined:
+            body["envs"] = json.dumps(envs)
+        if arguments is not undefined:
+            body["arguments"] = json.dumps(arguments)
+        if login_session_token is not undefined:
+            body["login_session_token"] = login_session_token
+
+        prefix = get_naming(api_session.get().api_version, "path")
+        rqst = Request(
+            "POST",
+            f"/{prefix}/{self.name}/start-service",
+        )
+        rqst.set_json(body)
+        async with rqst.fetch() as resp:
+            return await resp.json()
+
     # only supported in AsyncAPISession
     def listen_events(self, scope: Literal["*", "session", "kernel"] = "*") -> SSEContextManager:
         """
@@ -1174,7 +1206,7 @@ class InferenceSession(BaseFunction):
         resources: Optional[Mapping[str, str]] = None,
         resource_opts: Optional[Mapping[str, str]] = None,
         cluster_size: int = 1,
-        cluster_mode: Literal["single-node", "multi-node"] = "single-node",
+        cluster_mode: ClusterMode = ClusterMode.SINGLE_NODE,
         domain_name: Optional[str] = None,
         group_name: Optional[str] = None,
         bootstrap_script: Optional[str] = None,
@@ -1211,7 +1243,7 @@ class InferenceSession(BaseFunction):
         resources: Mapping[str, int] | Undefined = undefined,
         resource_opts: Mapping[str, int] | Undefined = undefined,
         cluster_size: int | Undefined = undefined,
-        cluster_mode: Literal["single-node", "multi-node"] | Undefined = undefined,
+        cluster_mode: ClusterMode | Undefined = undefined,
         domain_name: str | Undefined = undefined,
         group_name: str | Undefined = undefined,
         bootstrap_script: str | Undefined = undefined,
