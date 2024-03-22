@@ -255,8 +255,8 @@ class Mutations(graphene.ObjectType):
     modify_container_registry = ModifyContainerRegistry.Field()
     delete_container_registry = DeleteContainerRegistry.Field()
 
-    create_container_registries_users = CreateAssociationContainerRegistriesUsers.Field()
-    delete_container_registries_users = DeleteAssociationContainerRegistriesUsers.Field()
+    associate_container_registry_with_user = CreateAssociationContainerRegistriesUsers.Field()
+    disassociate_container_registry_with_user = DeleteAssociationContainerRegistriesUsers.Field()
 
     modify_endpoint = ModifyEndpoint.Field()
 
