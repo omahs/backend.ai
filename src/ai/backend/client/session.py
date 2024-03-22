@@ -251,6 +251,7 @@ class BaseSession(metaclass=abc.ABCMeta):
         "Agent",
         "AgentWatcher",
         "ScalingGroup",
+        "ContainerRegistry",
         "Storage",
         "Image",
         "ComputeSession",
@@ -296,6 +297,7 @@ class BaseSession(metaclass=abc.ABCMeta):
         from .func.agent import Agent, AgentWatcher
         from .func.auth import Auth
         from .func.bgtask import BackgroundTask
+        from .func.container_registry import ContainerRegistry
         from .func.domain import Domain
         from .func.dotfile import Dotfile
         from .func.etcd import EtcdConfig
@@ -343,6 +345,7 @@ class BaseSession(metaclass=abc.ABCMeta):
         self.Service = Service
         self.Model = Model
         self.QuotaScope = QuotaScope
+        self.ContainerRegistry = ContainerRegistry
 
     @property
     def proxy_mode(self) -> bool:

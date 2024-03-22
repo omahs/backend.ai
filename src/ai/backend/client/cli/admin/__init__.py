@@ -12,6 +12,7 @@ from . import (  # noqa
     acl,
     agent,
     domain,
+    container_registry,
     etcd,
     group,
     image,
