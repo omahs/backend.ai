@@ -20,8 +20,8 @@ from ai.backend.manager.defs import DEFAULT_IMAGE_ARCH
 from ai.backend.manager.models.gql_relay import AsyncNode, ConnectionResolverResult
 
 from .association_container_registries_users import (
-    CreateAssociationContainerRegistriesUsers,
-    DeleteAssociationContainerRegistriesUsers,
+    AssociateContainerRegistryWithUser,
+    DisassociateContainerRegistryWithUser,
 )
 from .container_registry import (
     ContainerRegistry,
@@ -255,8 +255,8 @@ class Mutations(graphene.ObjectType):
     modify_container_registry = ModifyContainerRegistry.Field()
     delete_container_registry = DeleteContainerRegistry.Field()
 
-    associate_container_registry_with_user = CreateAssociationContainerRegistriesUsers.Field()
-    disassociate_container_registry_with_user = DeleteAssociationContainerRegistriesUsers.Field()
+    associate_container_registry_with_user = AssociateContainerRegistryWithUser.Field()
+    disassociate_container_registry_with_user = DisassociateContainerRegistryWithUser.Field()
 
     modify_endpoint = ModifyEndpoint.Field()
 

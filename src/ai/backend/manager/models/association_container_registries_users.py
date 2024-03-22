@@ -14,7 +14,7 @@ from ai.backend.common.logging_utils import BraceStyleAdapter
 if TYPE_CHECKING:
     from .gql import GraphQueryContext
 
-from .base import GUID, Base, IDColumn, privileged_mutation
+from .base import GUID, Base, IDColumn, privileged_mutation, simple_db_mutate
 from .gql_relay import AsyncNode
 from .user import UserRole
 
@@ -23,10 +23,8 @@ log = BraceStyleAdapter(logging.getLogger(__spec__.name))  # type: ignore
 __all__: Sequence[str] = (
     "AssociationContainerRegistriesUsersRow",
     "AssociationContainerRegistriesUsers",
-    "CreateAssociationContainerRegistriesUsersInput",
-    "CreateAssociationContainerRegistriesUsers",
-    "DeleteAssociationContainerRegistriesUsersInput",
-    "DeleteAssociationContainerRegistriesUsers",
+    "AssociateContainerRegistryWithUser",
+    "DisassociateContainerRegistryWithUser",
 )
 
 
@@ -162,18 +160,15 @@ class AssociationContainerRegistriesUsers(graphene.ObjectType):
             return [cls.from_row(ctx, row) for row in result.scalars().all()]
 
 
-class CreateAssociationContainerRegistriesUsersInput(graphene.InputObjectType):
-    container_registry_id = graphene.UUID(required=True)
-    user_id = graphene.UUID(required=True)
-
-
-class CreateAssociationContainerRegistriesUsers(graphene.Mutation):
+class AssociateContainerRegistryWithUser(graphene.Mutation):
     allowed_roles = (UserRole.SUPERADMIN,)
-    id = graphene.UUID(required=True)
-    association = graphene.Field(AssociationContainerRegistriesUsers)
 
     class Arguments:
-        props = CreateAssociationContainerRegistriesUsersInput(required=True)
+        container_registry_id = graphene.UUID(required=True)
+        user_id = graphene.UUID(required=True)
+
+    ok = graphene.Boolean()
+    msg = graphene.String()
 
     @classmethod
     @privileged_mutation(
@@ -181,39 +176,30 @@ class CreateAssociationContainerRegistriesUsers(graphene.Mutation):
         lambda id, **kwargs: (None, id),
     )
     async def mutate(
-        cls, root, info: graphene.ResolveInfo, props: CreateAssociationContainerRegistriesUsersInput
-    ) -> "CreateAssociationContainerRegistriesUsers":
-        ctx: GraphQueryContext = info.context
-
+        cls,
+        root,
+        info: graphene.ResolveInfo,
+        container_registry_id: str | uuid.UUID,
+        user_id: str | uuid.UUID,
+    ) -> "AssociateContainerRegistryWithUser":
         input_config: dict[str, Any] = {
-            "container_registry_id": props.container_registry_id,
-            "user_id": props.user_id,
+            "container_registry_id": container_registry_id,
+            "user_id": user_id,
         }
 
-        async with ctx.db.begin_session() as db_session:
-            association_row = AssociationContainerRegistriesUsersRow(**input_config)
-            db_session.add(association_row)
-            await db_session.flush()
-            await db_session.refresh(association_row)
-
-            return cls(
-                id=association_row.id,
-                association=AssociationContainerRegistriesUsers.from_row(ctx, association_row),
-            )
+        insert_query = sa.insert(AssociationContainerRegistriesUsersRow).values(**input_config)
+        return await simple_db_mutate(cls, info.context, insert_query)
 
 
-class DeleteAssociationContainerRegistriesUsersInput(graphene.InputObjectType):
-    id = graphene.String(
-        required=True, description="Object id. Can be either global id or object id"
-    )
-
-
-class DeleteAssociationContainerRegistriesUsers(graphene.Mutation):
+class DisassociateContainerRegistryWithUser(graphene.Mutation):
     allowed_roles = (UserRole.SUPERADMIN,)
-    id = graphene.UUID(required=True)
 
     class Arguments:
-        props = DeleteAssociationContainerRegistriesUsersInput(required=True)
+        container_registry_id = graphene.UUID(required=True)
+        user_id = graphene.UUID(required=True)
+
+    ok = graphene.Boolean()
+    msg = graphene.String()
 
     @classmethod
     @privileged_mutation(
@@ -221,20 +207,15 @@ class DeleteAssociationContainerRegistriesUsers(graphene.Mutation):
         lambda id, **kwargs: (None, id),
     )
     async def mutate(
-        cls, root, info: graphene.ResolveInfo, props: DeleteAssociationContainerRegistriesUsersInput
-    ) -> "DeleteAssociationContainerRegistriesUsers":
-        ctx: GraphQueryContext = info.context
+        cls,
+        root,
+        info: graphene.ResolveInfo,
+        container_registry_id: str | uuid.UUID,
+        user_id: str | uuid.UUID,
+    ) -> "DisassociateContainerRegistryWithUser":
+        delete_query = sa.delete(AssociationContainerRegistriesUsersRow).where(
+            AssociationContainerRegistriesUsersRow.container_registry_id == container_registry_id
+            and AssociationContainerRegistriesUsersRow.user_id == user_id
+        )
 
-        async with ctx.db.begin_session() as db_session:
-            _, _id = AsyncNode.resolve_global_id(info, props.id)
-            association_id = uuid.UUID(_id) if _id else uuid.UUID(props.id)
-            association_row = await AssociationContainerRegistriesUsers.load(ctx, association_id)
-            await db_session.execute(
-                sa.delete(AssociationContainerRegistriesUsers).where(
-                    AssociationContainerRegistriesUsers.id == association_id
-                )
-            )
-
-            return cls(
-                association=AssociationContainerRegistriesUsers.from_row(ctx, association_row),
-            )
+        return await simple_db_mutate(cls, info.context, delete_query)

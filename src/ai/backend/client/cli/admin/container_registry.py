@@ -21,19 +21,17 @@ def container_registry() -> None:
 @pass_ctx_obj
 @click.argument("container_registry_id", type=str, metavar="CONTAINER_REGISTRY_ID")
 @click.argument("user_id", type=str, metavar="USER_ID")
-def associate_container_registry_with_user(ctx: CLIContext, container_registry_id, user_id):
+def associate_with_user(ctx: CLIContext, container_registry_id, user_id):
     """
     Associate a container registry with a user.
 
     \b
-    CONTAINER_REGISTRY_ID:
-    USER_ID:
+    CONTAINER_REGISTRY_ID: The id of the container registry to associate with the user.
+    USER_ID: The id of the user to associate with the container registry.
     """
     with Session() as session:
         try:
-            data = session.ContainerRegistry.associate_container_registry_with_user(
-                container_registry_id, user_id
-            )
+            data = session.ContainerRegistry.associate_with_user(container_registry_id, user_id)
         except Exception as e:
             ctx.output.print_mutation_error(
                 e,
@@ -62,37 +60,35 @@ def associate_container_registry_with_user(ctx: CLIContext, container_registry_i
 @pass_ctx_obj
 @click.argument("container_registry_id", type=str, metavar="CONTAINER_REGISTRY_ID")
 @click.argument("user_id", type=str, metavar="USER_ID")
-def disassociate_container_registry_with_user(ctx: CLIContext, container_registry_id, user_id):
+def disassociate_with_user(ctx: CLIContext, container_registry_id, user_id):
     """
     Dissociate a container registry with a user.
 
     \b
-    CONTAINER_REGISTRY_ID:
-    USER_ID:
+    CONTAINER_REGISTRY_ID: The id of the container registry to disassociate with the user.
+    USER_ID: The id of the user to disassociate with the container registry.
     """
     with Session() as session:
         try:
-            data = session.ContainerRegistry.associate_container_registry_with_user(
-                container_registry_id, user_id
-            )
+            data = session.ContainerRegistry.disassociate_with_user(container_registry_id, user_id)
         except Exception as e:
             ctx.output.print_mutation_error(
                 e,
                 item_name="container_registry",
-                action_name="container_registry_association",
+                action_name="container_registry_disassociation",
             )
             sys.exit(ExitCode.FAILURE)
         if not data["ok"]:
             ctx.output.print_mutation_error(
                 msg=data["msg"],
                 item_name="container_registry",
-                action_name="container_registry_association",
+                action_name="container_registry_disassociation",
             )
             sys.exit(ExitCode.FAILURE)
         ctx.output.print_mutation_result(
             data,
             extra_info={
-                "detail_msg": "Container registry {} is associated with user {}.".format(
+                "detail_msg": "Container registry {} is disassociated with user {}.".format(
                     container_registry_id, user_id
                 ),
             },
