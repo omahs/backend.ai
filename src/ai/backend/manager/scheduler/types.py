@@ -512,10 +512,10 @@ class AbstractScheduler(metaclass=ABCMeta):
                 sgroup_name = roundrobin_context.sgroup_name
                 requested_architecture = get_requested_architecture(pending_session_or_kernel)
 
-                rr_state: RoundRobinState | None = (
-                    await sched_ctx.registry.shared_config.get_roundrobin_state(
-                        sgroup_name, requested_architecture
-                    )
+                rr_state: (
+                    RoundRobinState | None
+                ) = await sched_ctx.registry.shared_config.get_roundrobin_state(
+                    sgroup_name, requested_architecture
                 )
 
                 if rr_state is None:
