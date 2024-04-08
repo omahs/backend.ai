@@ -4,6 +4,7 @@ Common definitions/constants used throughout the manager.
 
 import enum
 import re
+from decimal import Decimal
 from typing import Final
 
 from ai.backend.common.arch import CURRENT_ARCH
@@ -82,3 +83,5 @@ DEFAULT_KEYPAIR_RESOURCE_POLICY_NAME: Final = "default"
 DEFAULT_KEYPAIR_RATE_LIMIT: Final = 10000
 
 DEFAULT_SHARED_MEMORY_SIZE: Final = "64m"
+DEFAULT_MIN_MEM_SHARED_MEM_RATIO: Final = Decimal(1.0)
+MIN_MEM_SHARED_MEM_RATIO_KEY: Final = "manager/mem-shmem-ratio"
