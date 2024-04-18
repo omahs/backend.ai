@@ -6,7 +6,7 @@ import os.path
 import uuid
 from datetime import datetime
 from pathlib import PurePosixPath
-from typing import TYPE_CHECKING, Any, List, Mapping, NamedTuple, Optional, Sequence
+from typing import TYPE_CHECKING, Any, List, Mapping, NamedTuple, Optional, Sequence, cast
 
 import aiohttp
 import aiotools
@@ -23,7 +23,7 @@ from sqlalchemy.dialects import postgresql as pgsql
 from sqlalchemy.engine.row import Row
 from sqlalchemy.ext.asyncio import AsyncConnection as SAConnection
 from sqlalchemy.ext.asyncio import AsyncSession as SASession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import load_only, selectinload
 
 from ai.backend.common.bgtask import ProgressReporter
 from ai.backend.common.config import model_definition_iv
@@ -76,6 +76,7 @@ from .gql_relay import (
 from .group import GroupRow, ProjectType
 from .minilang.ordering import OrderSpecItem, QueryOrderParser
 from .minilang.queryfilter import FieldSpecItem, QueryFilterParser, enum_field_getter
+from .session import DEAD_SESSION_STATUSES, SessionRow
 from .user import UserRole
 from .utils import ExtendedAsyncSAEngine, execute_with_retry, sql_json_merge
 
@@ -864,6 +865,19 @@ async def update_vfolder_status(
 
     now = datetime.now(tzutc())
 
+    if update_status == VFolderOperationStatus.DELETE_PENDING:
+        select_stmt = sa.select(VFolderRow).where(VFolderRow.id.in_(vfolder_ids))
+        async with engine.begin_readonly_session() as db_session:
+            for vf_row in await db_session.scalars(select_stmt):
+                vf_row = cast(VFolderRow, vf_row)
+                mount_sessions = await get_sessions_by_mounted_folder(
+                    db_session, VFolderID.from_row(vf_row)
+                )
+                if mount_sessions:
+                    raise InvalidAPIParameters(
+                        f"Not allowed to delete. The folder(id: {vf_row.id}) is mounted on sessions(ids: {mount_sessions})"
+                    )
+
     async def _update() -> None:
         async with engine.begin_session() as db_session:
             query = (
@@ -1139,6 +1153,27 @@ async def ensure_quota_scope_accessible_by_user(
                     return
 
     raise InvalidAPIParameters
+
+
+async def get_sessions_by_mounted_folder(
+    db_session: SASession, vfolder_id: VFolderID
+) -> tuple[uuid.UUID]:
+    """
+    Return a tuple of sessions.id that the give folder is mounted on.
+    """
+
+    mount_elem = sa.func.jsonb_array_elements(
+        SessionRow.vfolder_mounts, type_=pgsql.JSONB
+    ).column_valued("vfolder_mount")
+    mount_subq = sa.select(mount_elem).where(mount_elem["vfid"].astext == str(vfolder_id)).exists()
+    select_stmt = (
+        sa.select(SessionRow)
+        .where(SessionRow.status.not_in(DEAD_SESSION_STATUSES) & mount_subq)
+        .options(load_only(SessionRow.id))
+    )
+
+    session_rows = (await db_session.scalars(select_stmt)).all()
+    return tuple([session.id for session in session_rows])
 
 
 class VirtualFolder(graphene.ObjectType):
