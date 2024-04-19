@@ -880,8 +880,9 @@ async def update_vfolder_status(
                     db_session, VFolderID.from_row(vf_row)
                 )
                 if mount_sessions:
+                    session_ids = [str(s) for s in mount_sessions]
                     raise InvalidAPIParameters(
-                        f"Not allowed to delete. The folder(id: {vf_row.id}) is mounted on sessions(ids: {mount_sessions})"
+                        f"Cannot delete the vfolder. The vfolder(id: {vf_row.id}) is mounted on sessions(ids: {session_ids})"
                     )
 
     async def _update() -> None:
