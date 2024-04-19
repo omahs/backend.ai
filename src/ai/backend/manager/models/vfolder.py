@@ -1189,7 +1189,10 @@ async def get_sessions_by_mounted_folder(
 
     class SimpleSessionRow(Base):
         __tablename__ = "sessions"
-        __table_args__ = {"extend_existing": True}
+        __table_args__ = (
+            sa.Index("ix_sessions_vfolder_mounts", "vfolder_mounts", postgresql_using="gin"),
+            {"extend_existing": True},  # `extend_existing` option must be placed last
+        )
         id = SessionIDColumn()
         status = sa.Column(
             "status",
