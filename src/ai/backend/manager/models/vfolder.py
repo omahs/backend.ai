@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any, List, Mapping, NamedTuple, Optional, Sequ
 
 import aiohttp
 import aiotools
+import attrs
 import graphene
 import sqlalchemy as sa
 import trafaret as t
@@ -25,10 +26,12 @@ from sqlalchemy.ext.asyncio import AsyncConnection as SAConnection
 from sqlalchemy.ext.asyncio import AsyncSession as SASession
 from sqlalchemy.orm import load_only, selectinload
 
+from ai.backend.common import validators as tx
 from ai.backend.common.bgtask import ProgressReporter
 from ai.backend.common.config import model_definition_iv
 from ai.backend.common.logging import BraceStyleAdapter
 from ai.backend.common.types import (
+    JSONSerializableMixin,
     MountPermission,
     QuotaScopeID,
     QuotaScopeType,
@@ -56,6 +59,7 @@ from .base import (
     GUID,
     Base,
     BigInt,
+    EnumType,
     EnumValueType,
     FilterExprArg,
     IDColumn,
@@ -63,7 +67,9 @@ from .base import (
     OrderExprArg,
     PaginatedList,
     QuotaScopeIDType,
+    SessionIDColumn,
     StrEnumType,
+    StructuredJSONObjectListColumn,
     batch_multiresult,
     generate_sql_info_for_gql_connection,
     metadata,
@@ -76,7 +82,7 @@ from .gql_relay import (
 from .group import GroupRow, ProjectType
 from .minilang.ordering import OrderSpecItem, QueryOrderParser
 from .minilang.queryfilter import FieldSpecItem, QueryFilterParser, enum_field_getter
-from .session import DEAD_SESSION_STATUSES, SessionRow
+from .session import DEAD_SESSION_STATUSES, SessionStatus
 from .user import UserRole
 from .utils import ExtendedAsyncSAEngine, execute_with_retry, sql_json_merge
 
@@ -1162,14 +1168,47 @@ async def get_sessions_by_mounted_folder(
     Return a tuple of sessions.id that the give folder is mounted on.
     """
 
-    mount_elem = sa.func.jsonb_array_elements(
-        SessionRow.vfolder_mounts, type_=pgsql.JSONB
-    ).column_valued("vfolder_mount")
-    mount_subq = sa.select(mount_elem).where(mount_elem["vfid"].astext == str(vfolder_id)).exists()
+    @attrs.define(slots=True)
+    class SimpleVFolderMount(JSONSerializableMixin):
+        vfid: VFolderID
+
+        def to_json(self) -> dict[str, Any]:
+            return {
+                "vfid": str(self.vfid),
+            }
+
+        @classmethod
+        def from_json(cls, obj: Mapping[str, Any]) -> SimpleVFolderMount:
+            return cls(**cls.as_trafaret().check(obj))
+
+        @classmethod
+        def as_trafaret(cls) -> t.Trafaret:
+            return t.Dict({
+                t.Key("vfid"): tx.VFolderID,
+            })
+
+    class SimpleSessionRow(Base):
+        __tablename__ = "sessions"
+        __table_args__ = {"extend_existing": True}
+        id = SessionIDColumn()
+        status = sa.Column(
+            "status",
+            EnumType(SessionStatus),
+            default=SessionStatus.PENDING,
+            nullable=False,
+            index=True,
+        )
+        vfolder_mounts = sa.Column(
+            "vfolder_mounts", StructuredJSONObjectListColumn(SimpleVFolderMount), nullable=True
+        )
+
     select_stmt = (
-        sa.select(SessionRow)
-        .where(SessionRow.status.not_in(DEAD_SESSION_STATUSES) & mount_subq)
-        .options(load_only(SessionRow.id))
+        sa.select(SimpleSessionRow)
+        .where(
+            (SimpleSessionRow.status.not_in(DEAD_SESSION_STATUSES))
+            & SimpleSessionRow.vfolder_mounts.contains([SimpleVFolderMount(vfid=vfolder_id)])
+        )
+        .options(load_only(SimpleSessionRow.id))
     )
 
     session_rows = (await db_session.scalars(select_stmt)).all()
