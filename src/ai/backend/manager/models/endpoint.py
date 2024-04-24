@@ -441,6 +441,7 @@ class Endpoint(graphene.ObjectType):
     resource_slots = graphene.JSONString()
     url = graphene.String()
     model = graphene.UUID()
+    model_definition_path = graphene.String()
     model_mount_destiation = graphene.String()
     created_user = graphene.UUID(
         deprecation_reason="Deprecated since 23.09.8; use `created_user_id`"
@@ -491,6 +492,7 @@ class Endpoint(graphene.ObjectType):
             resource_slots=row.resource_slots.to_json(),
             url=row.url,
             model=row.model,
+            model_definition_path=row.model_definition_path,
             model_mount_destiation=row.model_mount_destiation,
             created_user=row.created_user,
             created_user_id=row.created_user,
@@ -703,6 +705,7 @@ class ModifyEndpointInput(graphene.InputObjectType):
     image = ImageRefType()
     name = graphene.String()
     resource_group = graphene.String()
+    model_definition_path = graphene.String()
     open_to_public = graphene.Boolean()
 
 
@@ -737,6 +740,7 @@ class ModifyEndpoint(graphene.Mutation):
         set_if_set(props, data, "desired_session_count")
         set_if_set(props, data, "image")
         set_if_set(props, data, "resource_group")
+        set_if_set(props, data, "model_definition_path")
         image = data.pop("image", None)
 
         async with graph_ctx.db.begin_readonly_session() as db_session:
