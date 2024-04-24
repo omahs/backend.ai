@@ -781,6 +781,7 @@ type Endpoint implements Item {
   resource_slots: JSONString
   url: String
   model: UUID
+  model_definition_filename: String
   model_mount_destiation: String
   created_user: UUID @deprecated(reason: "Deprecated since 23.09.8; use `created_user_id`")
 
@@ -1664,6 +1665,7 @@ input ModifyEndpointInput {
   image: ImageRefType
   name: String
   resource_group: String
+  model_definition_filename: String
   open_to_public: Boolean
 }
 
