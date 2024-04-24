@@ -125,6 +125,8 @@ class EndpointRow(Base):
     environ = sa.Column("environ", pgsql.JSONB(), nullable=True, default={})
     open_to_public = sa.Column("open_to_public", sa.Boolean, default=False)
 
+    model_definition_path = sa.Column("model_definition_path", sa.String(length=128), nullable=True)
+
     resource_slots = sa.Column("resource_slots", ResourceSlotColumn(), nullable=False)
     url = sa.Column("url", sa.String(length=1024))
     resource_opts = sa.Column("resource_opts", pgsql.JSONB(), nullable=True, default={})
@@ -165,6 +167,7 @@ class EndpointRow(Base):
     def __init__(
         self,
         name: str,
+        model_definition_path: str | None,
         created_user: uuid.UUID,
         session_owner: uuid.UUID,
         desired_session_count: int,
@@ -187,6 +190,7 @@ class EndpointRow(Base):
     ):
         self.id = uuid.uuid4()
         self.name = name
+        self.model_definition_path = model_definition_path
         self.created_user = created_user
         self.session_owner = session_owner
         self.desired_session_count = desired_session_count

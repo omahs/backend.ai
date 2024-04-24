@@ -254,6 +254,10 @@ async def get_info(request: web.Request) -> ServeInfoModel:
 
 class ServiceConfigModel(BaseModel):
     model: str = Field(description="Name or ID of the model VFolder", examples=["ResNet50"])
+    model_definition_path: str | None = Field(
+        description="Path to the model definition file. If not set, Backend.AI will look for model-definition.yml or model-definition.yaml by default.",
+        default=None,
+    )
     model_version: int = Field(
         validation_alias=AliasChoices("model_version", "modelVersion"),
         description="Unused; Reserved for future works",
@@ -345,6 +349,7 @@ class NewServiceRequestModel(BaseModel):
 @dataclass
 class ValidationResult:
     model_id: uuid.UUID
+    model_definition_path: str | None
     requester_access_key: AccessKey
     owner_access_key: AccessKey
     owner_uuid: uuid.UUID
@@ -450,12 +455,28 @@ async def _validate(request: web.Request, params: NewServiceRequestModel) -> Val
     ) as (client_api_url, storage_resp):
         storage_reply = await storage_resp.json()
 
-    for item in storage_reply["items"]:
-        if item["name"] == "model-definition.yml" or item["name"] == "model-definition.yaml":
-            yaml_name = item["name"]
-            break
+    if params.config.model_definition_path:
+        path = Path(params.config.model_definition_path)
+        storage_reply = await _listdir(path.parent.as_posix())
+        for item in storage_reply["items"]:
+            if item["name"] == path.name:
+                yaml_name = params.config.model_definition_path
+                break
+        else:
+            raise InvalidAPIParameters(
+                f"Model definition YAML file {params.config.model_definition_path} not found inside the model storage"
+            )
     else:
-        raise InvalidAPIParameters("Model definition YAML file not found inside the model storage")
+        storage_reply = await _listdir(".")
+        model_definition_candidates = ["model-definition.yaml", "model-definition.yml"]
+        for item in storage_reply["items"]:
+            if item["name"] in model_definition_candidates:
+                yaml_name = item["name"]
+                break
+        else:
+            raise InvalidAPIParameters(
+                'Model definition YAML file "model-definition.yaml" or "model-definition.yml" not found inside the model storage'
+            )
 
     chunks = bytes()
     async with root_ctx.storage_manager.request(
@@ -488,6 +509,7 @@ async def _validate(request: web.Request, params: NewServiceRequestModel) -> Val
 
     return ValidationResult(
         model_id,
+        yaml_name if params.config.model_definition_path else None,
         requester_access_key,
         owner_access_key,
         owner_uuid,
@@ -566,6 +588,7 @@ async def create(request: web.Request, params: NewServiceRequestModel) -> ServeI
             raise InvalidAPIParameters(f"Invalid group name {project_id}")
         endpoint = EndpointRow(
             params.service_name,
+            validation_result.model_definition_path,
             request["user"]["uuid"],
             validation_result.owner_uuid,
             params.desired_session_count,
