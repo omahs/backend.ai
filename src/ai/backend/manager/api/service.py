@@ -678,6 +678,7 @@ async def try_start(request: web.Request, params: NewServiceRequestModel) -> Try
                 "mount_map": {
                     validation_result.model_id: creation_config["model_mount_destination"]
                 },
+                "model_definition_path": validation_result.model_definition_path,
                 "environ": creation_config["environ"],
                 "scaling_group": validation_result.scaling_group,
                 "resources": creation_config["resources"],

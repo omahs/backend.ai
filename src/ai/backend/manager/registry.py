@@ -3819,6 +3819,7 @@ async def handle_route_creation(
                 {
                     "mounts": [endpoint.model],
                     "mount_map": {endpoint.model: endpoint.model_mount_destiation},
+                    "model_definition_path": endpoint.model_definition_path,
                     "environ": endpoint.environ,
                     "scaling_group": endpoint.resource_group,
                     "resources": endpoint.resource_slots,
