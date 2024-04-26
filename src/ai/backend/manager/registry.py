@@ -977,6 +977,8 @@ class AgentRegistry:
         # Prepare internal data.
         internal_data = {} if internal_data is None else internal_data
         internal_data.update(dotfile_data)
+        if _fname := session_enqueue_configs["creation_config"].get("model_definition_path"):
+            internal_data["model_definition_path"] = _fname
 
         hook_result = await self.hook_plugin_ctx.dispatch(
             "PRE_ENQUEUE_SESSION",
