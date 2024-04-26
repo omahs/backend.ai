@@ -22,6 +22,7 @@ from ai.backend.common.logging import BraceStyleAdapter
 from ai.backend.common.types import LogSeverity
 from ai.backend.common.validators import TimeDuration
 from ai.backend.manager.models import error_logs
+from ai.backend.manager.models.utils import vacuum_db
 
 from .context import CLIContext, redis_ctx
 
@@ -343,10 +344,10 @@ def clear_history(cli_ctx: CLIContext, retention, vacuum_full) -> None:
             expiration_date,
         )
 
-    # asyncio.run(_clear_redis_history())
+    asyncio.run(_clear_redis_history())
     asyncio.run(_clear_terminated_sessions())
-    # asyncio.run(_clear_old_error_logs())
-    # asyncio.run(vacuum_db(cli_ctx.local_config, vacuum_full))
+    asyncio.run(_clear_old_error_logs())
+    asyncio.run(vacuum_db(cli_ctx.local_config, vacuum_full))
 
 
 @main.group(cls=LazyGroup, import_name="ai.backend.manager.cli.dbschema:cli")
