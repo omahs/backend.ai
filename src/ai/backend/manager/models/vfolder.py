@@ -1243,6 +1243,10 @@ async def get_sessions_by_mounted_folder(
 
     @attrs.define(slots=True)
     class SimpleVFolderMount(JSONSerializableMixin):
+        """
+        Simplified ai.backend.common.types.VFolderMount type that only requires a `vfid` field.
+        """
+
         vfid: VFolderID
 
         def to_json(self) -> dict[str, Any]:
@@ -1261,6 +1265,12 @@ async def get_sessions_by_mounted_folder(
             })
 
     class SimpleSessionRow(Base):
+        """
+        Simplified ai.backend.manager.models.SessionRow ORM class that has `vfolder_mounts` field as `SimpleVFolderMount`.
+        Original `SessionRow` requires all fields of the `VFolderMount` when querying by the vfolder_mounts column.
+        `SimpleSessionRow` requires only vfid field of the `SimpleVFolderMount` when querying by its vfolder_mounts column.
+        """
+
         __tablename__ = "sessions"
         __table_args__ = (
             sa.Index("ix_sessions_vfolder_mounts", "vfolder_mounts", postgresql_using="gin"),
