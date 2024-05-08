@@ -32,6 +32,7 @@ from ai.backend.common.types import (
     MountPermission,
     QuotaScopeID,
     QuotaScopeType,
+    SessionId,
     VFolderHostPermission,
     VFolderHostPermissionMap,
     VFolderID,
@@ -56,7 +57,6 @@ from .base import (
     GUID,
     Base,
     BigInt,
-    EnumType,
     EnumValueType,
     FilterExprArg,
     IDColumn,
@@ -64,7 +64,6 @@ from .base import (
     OrderExprArg,
     PaginatedList,
     QuotaScopeIDType,
-    SessionIDColumn,
     StrEnumType,
     batch_multiresult,
     generate_sql_info_for_gql_connection,
@@ -74,7 +73,7 @@ from .gql_relay import AsyncNode, Connection, ConnectionResolverResult
 from .group import GroupRow, ProjectType
 from .minilang.ordering import OrderSpecItem, QueryOrderParser
 from .minilang.queryfilter import FieldSpecItem, QueryFilterParser, enum_field_getter
-from .session import DEAD_SESSION_STATUSES, SessionStatus
+from .session import DEAD_SESSION_STATUSES, SessionRow
 from .user import UserRole
 from .utils import ExtendedAsyncSAEngine, execute_with_retry, sql_json_merge
 
@@ -1232,40 +1231,18 @@ async def ensure_quota_scope_accessible_by_user(
 
 async def get_sessions_by_mounted_folder(
     db_session: SASession, vfolder_id: VFolderID
-) -> tuple[uuid.UUID]:
+) -> tuple[SessionId]:
     """
     Return a tuple of sessions.id that the give folder is mounted on.
     """
 
-    class SimpleSessionRow(Base):
-        """
-        Simplified ai.backend.manager.models.SessionRow ORM class that has `vfolder_mounts` field as `JSONB` column.
-        Original `SessionRow` requires all fields of the `VFolderMount` when querying by the vfolder_mounts column.
-        `SimpleSessionRow` requires only vfid field when querying by its vfolder_mounts column.
-        """
-
-        __tablename__ = "sessions"
-        __table_args__ = (
-            sa.Index("ix_sessions_vfolder_mounts", "vfolder_mounts", postgresql_using="gin"),
-            {"extend_existing": True},  # `extend_existing` option must be placed last
-        )
-        id = SessionIDColumn()
-        status = sa.Column(
-            "status",
-            EnumType(SessionStatus),
-            default=SessionStatus.PENDING,
-            nullable=False,
-            index=True,
-        )
-        vfolder_mounts = sa.Column("vfolder_mounts", pgsql.JSONB, nullable=True)
-
     select_stmt = (
-        sa.select(SimpleSessionRow)
+        sa.select(SessionRow)
         .where(
-            (SimpleSessionRow.status.not_in(DEAD_SESSION_STATUSES))
-            & SimpleSessionRow.vfolder_mounts.contains([{"vfid": str(vfolder_id)}])
+            (SessionRow.status.not_in(DEAD_SESSION_STATUSES))
+            & SessionRow.vfolder_mounts.contains([{"vfid": str(vfolder_id)}])
         )
-        .options(load_only(SimpleSessionRow.id))
+        .options(load_only(SessionRow.id))
     )
 
     session_rows = (await db_session.scalars(select_stmt)).all()
