@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING, Any, Final, List, Mapping, NamedTuple, Optiona
 
 import aiohttp
 import aiotools
-import attrs
 import graphene
 import sqlalchemy as sa
 import trafaret as t
@@ -26,12 +25,10 @@ from sqlalchemy.ext.asyncio import AsyncConnection as SAConnection
 from sqlalchemy.ext.asyncio import AsyncSession as SASession
 from sqlalchemy.orm import load_only, selectinload
 
-from ai.backend.common import validators as tx
 from ai.backend.common.bgtask import ProgressReporter
 from ai.backend.common.config import model_definition_iv
 from ai.backend.common.logging import BraceStyleAdapter
 from ai.backend.common.types import (
-    JSONSerializableMixin,
     MountPermission,
     QuotaScopeID,
     QuotaScopeType,
@@ -69,7 +66,6 @@ from .base import (
     QuotaScopeIDType,
     SessionIDColumn,
     StrEnumType,
-    StructuredJSONObjectListColumn,
     batch_multiresult,
     generate_sql_info_for_gql_connection,
     metadata,
@@ -1241,34 +1237,11 @@ async def get_sessions_by_mounted_folder(
     Return a tuple of sessions.id that the give folder is mounted on.
     """
 
-    @attrs.define(slots=True)
-    class SimpleVFolderMount(JSONSerializableMixin):
-        """
-        Simplified ai.backend.common.types.VFolderMount type that only requires a `vfid` field.
-        """
-
-        vfid: VFolderID
-
-        def to_json(self) -> dict[str, Any]:
-            return {
-                "vfid": str(self.vfid),
-            }
-
-        @classmethod
-        def from_json(cls, obj: Mapping[str, Any]) -> SimpleVFolderMount:
-            return cls(**cls.as_trafaret().check(obj))
-
-        @classmethod
-        def as_trafaret(cls) -> t.Trafaret:
-            return t.Dict({
-                t.Key("vfid"): tx.VFolderID,
-            })
-
     class SimpleSessionRow(Base):
         """
-        Simplified ai.backend.manager.models.SessionRow ORM class that has `vfolder_mounts` field as `SimpleVFolderMount`.
+        Simplified ai.backend.manager.models.SessionRow ORM class that has `vfolder_mounts` field as `JSONB` column.
         Original `SessionRow` requires all fields of the `VFolderMount` when querying by the vfolder_mounts column.
-        `SimpleSessionRow` requires only vfid field of the `SimpleVFolderMount` when querying by its vfolder_mounts column.
+        `SimpleSessionRow` requires only vfid field when querying by its vfolder_mounts column.
         """
 
         __tablename__ = "sessions"
@@ -1284,15 +1257,13 @@ async def get_sessions_by_mounted_folder(
             nullable=False,
             index=True,
         )
-        vfolder_mounts = sa.Column(
-            "vfolder_mounts", StructuredJSONObjectListColumn(SimpleVFolderMount), nullable=True
-        )
+        vfolder_mounts = sa.Column("vfolder_mounts", pgsql.JSONB, nullable=True)
 
     select_stmt = (
         sa.select(SimpleSessionRow)
         .where(
             (SimpleSessionRow.status.not_in(DEAD_SESSION_STATUSES))
-            & SimpleSessionRow.vfolder_mounts.contains([SimpleVFolderMount(vfid=vfolder_id)])
+            & SimpleSessionRow.vfolder_mounts.contains([{"vfid": str(vfolder_id)}])
         )
         .options(load_only(SimpleSessionRow.id))
     )
