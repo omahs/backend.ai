@@ -5,6 +5,7 @@ import secrets
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Iterable, Tuple
 
 import aiohttp
@@ -443,17 +444,18 @@ async def _validate(request: web.Request, params: NewServiceRequestModel) -> Val
 
     proxy_name, volume_name = root_ctx.storage_manager.split_host(folder_row["host"])
 
-    async with root_ctx.storage_manager.request(
-        proxy_name,
-        "POST",
-        "folder/file/list",
-        json={
-            "volume": volume_name,
-            "vfid": str(VFolderID(folder_row["quota_scope_id"], folder_row["id"])),
-            "relpath": ".",
-        },
-    ) as (client_api_url, storage_resp):
-        storage_reply = await storage_resp.json()
+    async def _listdir(relpath: str) -> dict[str, Any]:
+        async with root_ctx.storage_manager.request(
+            proxy_name,
+            "POST",
+            "folder/file/list",
+            json={
+                "volume": volume_name,
+                "vfid": str(VFolderID(folder_row["quota_scope_id"], folder_row["id"])),
+                "relpath": relpath,
+            },
+        ) as (client_api_url, storage_resp):
+            return await storage_resp.json()
 
     if params.config.model_definition_path:
         path = Path(params.config.model_definition_path)
