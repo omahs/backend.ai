@@ -1046,10 +1046,8 @@ async def server_main_logwrapper(
     _args: List[Any],
 ) -> AsyncIterator[None]:
     setproctitle(f"backend.ai: manager worker-{pidx}")
-
     log_endpoint = _args[2]
     logger = Logger(_args[0]["logging"], is_master=False, log_endpoint=log_endpoint)
-
     try:
         with logger:
             async with server_main(loop, pidx, _args):
@@ -1113,7 +1111,6 @@ def main(
                 log.info("runtime: {0}", env_info())
                 log_config = logging.getLogger("ai.backend.manager.config")
                 log_config.debug("debug mode enabled.")
-
                 if cfg["manager"]["event-loop"] == "uvloop":
                     import uvloop
 
