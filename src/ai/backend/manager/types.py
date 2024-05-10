@@ -43,13 +43,13 @@ class DistributedLockFactory(Protocol):
     def __call__(self, lock_id: LockID, lifetime_hint: float) -> AbstractDistributedLock: ...
 
 
-class RaftNodeInitialRole(str, enum.Enum):
+class RaftNodeInitialRole(enum.StrEnum):
     LEADER = "leader"
     VOTER = "voter"
     LEARNER = "learner"
 
 
-class RaftLogLovel(str, enum.Enum):
+class RaftLogLovel(enum.StrEnum):
     TRACE = "trace"
     DEBUG = "debug"
     INFO = "info"
