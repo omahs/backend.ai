@@ -219,6 +219,7 @@ from ai.backend.common.types import (
     SlotTypes,
     current_resource_slots,
 )
+from ai.backend.manager.api.context import GlobalTimerKind
 from ai.backend.manager.types import RaftNodeInitialRole
 
 from ..manager.defs import INTRINSIC_SLOTS
@@ -272,6 +273,9 @@ manager_local_config_iv = (
             t.Key("ssl-cert", default=None): t.Null | tx.Path(type="file"),
             t.Key("ssl-privkey", default=None): t.Null | tx.Path(type="file"),
             t.Key("event-loop", default="asyncio"): t.Enum("asyncio", "uvloop"),
+            t.Key("global-timer", default=GlobalTimerKind.DISTRIBUTED_LOCK): tx.Enum(
+                GlobalTimerKind
+            ),
             t.Key("distributed-lock", default="pg_advisory"): t.Enum(
                 "filelock",
                 "pg_advisory",

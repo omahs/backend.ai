@@ -62,7 +62,7 @@ from ai.backend.common.types import (
     SessionTypes,
 )
 from ai.backend.common.utils import nmget
-from ai.backend.manager.api.context import RaftClusterContext
+from ai.backend.manager.api.context import GlobalTimerContext, GlobalTimerKind
 from ai.backend.manager.types import DistributedLockFactory
 
 from .defs import DEFAULT_ROLE, LockID
@@ -183,7 +183,7 @@ class IdleCheckerHost:
         shared_config: SharedConfig,
         event_dispatcher: EventDispatcher,
         event_producer: EventProducer,
-        raft_ctx: RaftClusterContext,
+        global_timer_ctx: GlobalTimerContext,
         lock_factory: DistributedLockFactory,
     ) -> None:
         self._checkers: list[BaseIdleChecker] = []
@@ -206,7 +206,7 @@ class IdleCheckerHost:
         self._grace_period_checker: NewUserGracePeriodChecker = NewUserGracePeriodChecker(
             event_dispatcher, self._redis_live, self._redis_stat
         )
-        self.raft_ctx = raft_ctx
+        self.global_timer_ctx = global_timer_ctx
 
     def add_checker(self, checker: BaseIdleChecker):
         if self._frozen:
@@ -227,22 +227,25 @@ class IdleCheckerHost:
         for checker in self._checkers:
             await checker.populate_config(raw_config.get(checker.name) or {})
 
-        if self.raft_ctx.use_raft():
-            self.timer = RaftGlobalTimer(
-                self.raft_ctx.raft_node,
-                self._event_producer,
-                lambda: DoIdleCheckEvent(),
-                self.check_interval,
-                task_name="idle_checker",
-            )
-        else:
-            self.timer = DistributedLockGlobalTimer(
-                self._lock_factory(LockID.LOCKID_IDLE_CHECK_TIMER, self.check_interval),
-                self._event_producer,
-                lambda: DoIdleCheckEvent(),
-                self.check_interval,
-                task_name="idle_checker",
-            )
+        match self.global_timer_ctx.timer_kind:
+            case GlobalTimerKind.RAFT:
+                self.timer = RaftGlobalTimer(
+                    self.global_timer_ctx.raft.get_raft_node(),
+                    self._event_producer,
+                    lambda: DoIdleCheckEvent(),
+                    self.check_interval,
+                    task_name="idle_checker",
+                )
+            case GlobalTimerKind.DISTRIBUTED_LOCK:
+                self.timer = DistributedLockGlobalTimer(
+                    self._lock_factory(LockID.LOCKID_IDLE_CHECK_TIMER, self.check_interval),
+                    self._event_producer,
+                    lambda: DoIdleCheckEvent(),
+                    self.check_interval,
+                    task_name="idle_checker",
+                )
+            case _:
+                assert False, f"Unknown global timer backend: {self.global_timer_ctx.timer_kind}"
 
         self._evh_idle_check = self._event_dispatcher.consume(
             DoIdleCheckEvent,
@@ -1076,7 +1079,7 @@ async def init_idle_checkers(
     shared_config: SharedConfig,
     event_dispatcher: EventDispatcher,
     event_producer: EventProducer,
-    raft_ctx: RaftClusterContext,
+    global_timer_ctx: GlobalTimerContext,
     lock_factory: DistributedLockFactory,
 ) -> IdleCheckerHost:
     """
@@ -1088,7 +1091,7 @@ async def init_idle_checkers(
         shared_config,
         event_dispatcher,
         event_producer,
-        raft_ctx,
+        global_timer_ctx,
         lock_factory,
     )
     checker_init_args = (event_dispatcher, checker_host._redis_live, checker_host._redis_stat)
